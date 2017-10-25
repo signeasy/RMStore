@@ -25,6 +25,7 @@
 @protocol RMStoreReceiptVerifier;
 @protocol RMStoreTransactionPersistor;
 @protocol RMStoreObserver;
+@protocol RMStoreInAppPurchasePromotion;
 
 extern NSString *const RMStoreErrorDomain;
 extern NSInteger const RMStoreErrorCodeDownloadCanceled;
@@ -113,6 +114,12 @@ extern NSInteger const RMStoreErrorCodeUnableToCompleteVerification;
                         onSuccess:(void (^)(NSArray *transactions))successBlock
                           failure:(void (^)(NSError *error))failureBlock __attribute__((availability(ios,introduced=7.0)));
 
+/**
+ Lets RMStore know that we can continue and process the any saved payments from the In App purchase promotions.
+ */
+- (void) processAnyInAppPurchasePromotionPaymentsIfAnyWithsuccess:(void (^)(SKPaymentTransaction *))successBlock
+                                                          failure:(void (^)(SKPaymentTransaction *, NSError *))failureBlock;
+
 #pragma mark Receipt
 ///---------------------------------------------
 /// @name Getting the receipt
@@ -157,6 +164,13 @@ extern NSInteger const RMStoreErrorCodeUnableToCompleteVerification;
  @see RMStoreUserDefaultsPersistence
  */
 @property (nonatomic, weak) id<RMStoreTransactionPersistor> transactionPersistor;
+
+
+/**
+ 
+ The delegate for In Apppurchase promotion. The delegate will be asked if we want to continue to purchase or not.
+ */
+@property (nonatomic, weak) id<RMStoreInAppPurchasePromotion> inAppPurchasePromotion;
 
 
 #pragma mark Product management
@@ -261,6 +275,14 @@ extern NSInteger const RMStoreErrorCodeUnableToCompleteVerification;
 - (void)storeRefreshReceiptFinished:(NSNotification*)notification __attribute__((availability(ios,introduced=7.0)));
 - (void)storeRestoreTransactionsFailed:(NSNotification*)notification;
 - (void)storeRestoreTransactionsFinished:(NSNotification*)notification;
+
+@end
+
+@protocol RMStoreInAppPurchasePromotion <NSObject>
+
+@optional
+- (BOOL) shouldAddStorePayment:(SKPayment *)payment forProduct:(SKProduct *)product;
+- (BOOL) shouldSavePaymentForLater:(SKPayment *)payment forProduct:(SKProduct *)product;
 
 @end
 

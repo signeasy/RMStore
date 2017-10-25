@@ -127,6 +127,8 @@ typedef void (^RMStoreSuccessBlock)();
 
 @interface RMStore() <SKRequestDelegate>
 
+@property (nonatomic, strong) SKPayment *storedPaymentFromInAppPurchasePromotion;
+
 @end
 
 @implementation RMStore {
@@ -271,6 +273,23 @@ typedef void (^RMStoreSuccessBlock)();
     _restoreTransactionsSuccessBlock = successBlock;
     _restoreTransactionsFailureBlock = failureBlock;
     [[SKPaymentQueue defaultQueue] restoreCompletedTransactionsWithApplicationUsername:userIdentifier];
+}
+
+- (void) processAnyInAppPurchasePromotionPaymentsIfAnyWithsuccess:(void (^)(SKPaymentTransaction *))successBlock
+                                                      failure:(void (^)(SKPaymentTransaction *, NSError *))failureBlock
+
+{
+    if (_storedPaymentFromInAppPurchasePromotion == nil) {
+        return;
+    }
+    
+    RMAddPaymentParameters *parameters = [[RMAddPaymentParameters alloc] init];
+    parameters.successBlock = successBlock;
+    parameters.failureBlock = failureBlock;
+    _addPaymentParameters[_storedPaymentFromInAppPurchasePromotion.productIdentifier] = parameters;
+    
+    [[SKPaymentQueue defaultQueue] addPayment:_storedPaymentFromInAppPurchasePromotion];
+    _storedPaymentFromInAppPurchasePromotion = nil;
 }
 
 #pragma mark Receipt
@@ -438,6 +457,23 @@ typedef void (^RMStoreSuccessBlock)();
                 break;
         }
     }
+}
+
+- (BOOL)paymentQueue:(SKPaymentQueue *)queue shouldAddStorePayment:(SKPayment *)payment forProduct:(SKProduct *)product {
+    BOOL canContinue = false;
+    
+    if ([_inAppPurchasePromotion respondsToSelector:@selector(shouldAddStorePayment:forProduct:)]) {
+        canContinue = [_inAppPurchasePromotion shouldAddStorePayment:payment forProduct:product];
+        
+        if (!canContinue && [_inAppPurchasePromotion respondsToSelector:@selector(shouldSavePaymentForLater:forProduct:)]) {
+            if ([_inAppPurchasePromotion shouldSavePaymentForLater:payment forProduct:product]) {
+                /// Save the payment.
+                _storedPaymentFromInAppPurchasePromotion = payment;
+            }
+        }
+    }
+    
+    return canContinue;
 }
 
 #pragma mark Download State
